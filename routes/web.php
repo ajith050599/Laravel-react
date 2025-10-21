@@ -27,6 +27,10 @@ Route::get('/feedback', function () {
     return view('pages.feedback');
 });
 
+Route::get('/tasks/{any?}', function () {
+    return view('pages.task');
+})->where('any', '.*');
+
 Route::post('/api/submit-form', function (Request $request) {
     $data = $request->validate([
         'name' => 'required|string|max:50',

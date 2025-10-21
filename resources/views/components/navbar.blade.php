@@ -13,5 +13,13 @@
         <li><a href="/register" class="block hover:bg-gray-200 px-2 py-1 rounded">Register</a></li>
         <li><a href="/form" class="block hover:bg-gray-200 px-2 py-1 rounded">Normal form</a></li>
         <li><a href="/feedback" class="block hover:bg-gray-200 px-2 py-1 rounded">feedback</a></li>
+        <li><a href="/tasks" class="block hover:bg-gray-200 px-2 py-1 rounded">Task Manager</a></li>
+        <li>
+            <a href="/tasks#/add" class="block hover:bg-gray-200 px-2 py-1 rounded">
+                Add Task
+            </a>
+        </li>
+        <!-- <li><a href="/tasks/add" class="block hover:bg-gray-200 px-2 py-1 rounded">Add Task</a></li> -->
+
     </ul>
 </nav>
