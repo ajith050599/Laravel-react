@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import FeedbackPage from "./pages/FeedbackPage";
+import CardGrid from "./pages/Overview";
 
 ReactDOM.createRoot(document.getElementById("react-root")).render(
     <React.StrictMode>
-        <FeedbackPage />
+        <CardGrid />
     </React.StrictMode>
 );
