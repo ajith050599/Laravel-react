@@ -4,7 +4,7 @@ import SettingsIcon from "../assets/settings-02.svg";
 import CloseIcon from "../assets/trash.svg";
 import MoveIcon from "../assets/move.svg";
 
-const SortableCard = ({ widget, layout, WidgetComponent, isDraggable, onDelete }) => {
+const SortableCard = ({ widget, layout, WidgetComponent, isDraggable, onDelete, onSettings }) => {
     const { id, config } = widget;
     const { width, height } = layout || {};
 
@@ -29,6 +29,7 @@ const SortableCard = ({ widget, layout, WidgetComponent, isDraggable, onDelete }
 
     const handleSettingsClick = (e) => {
         e.stopPropagation();
+        onSettings(widget); 
     };
 
     const handleMoveClick = (e) => {

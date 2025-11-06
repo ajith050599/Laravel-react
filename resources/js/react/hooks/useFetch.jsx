@@ -22,9 +22,7 @@ export const useFetch = (
     const [hasError, setHasError] = useState(null);
 
     const fetchData = useCallback(
-        async (overrideOptions = {}) => {
-            console.log("yayyyyyyyyyyy");
-            
+        async (overrideOptions = {}) => {            
             if (!isActive) return; // skip fetching when inactive
 
             setIsLoading(true);

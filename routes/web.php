@@ -57,7 +57,7 @@ Route::get('/api/user-widgets', function () {
                 'people_type' => "employee"
             ],
         ],
-    ];  
+    ];
 
     if (Storage::disk('local')->exists($filePath)) {
         $data = json_decode(Storage::disk('local')->get($filePath));
@@ -142,6 +142,35 @@ Route::post('/api/user-widgets', function (Request $request) {
         'message' => 'Widget created successfully.',
         'widget'  => $validated,
         'count'   => count($data),
+        'widgets' => $data
+    ]);
+});
+
+Route::patch('/api/user-widgets/{id}', function (Request $request, $id) {
+    $validated = $request->validate([
+        'key' => 'sometimes|string',
+        'config' => 'sometimes|array',
+    ]);
+
+    $filePath = 'user_widgets_data.json';
+
+    if (!Storage::disk('local')->exists($filePath)) {
+        return response()->json(['error' => 'Widget data not found'], 404);
+    }
+
+    $data = json_decode(Storage::disk('local')->get($filePath), true);
+
+    foreach ($data as &$widget) {
+        if ($widget['id'] === $id) {
+            $widget = array_merge($widget, $validated);
+            break;
+        }
+    }
+
+    Storage::disk('local')->put($filePath, json_encode($data, JSON_PRETTY_PRINT));
+
+    return response()->json([
+        'message' => 'Widget updated successfully.',
         'widgets' => $data
     ]);
 });

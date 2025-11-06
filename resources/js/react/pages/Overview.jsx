@@ -27,6 +27,7 @@ const CardGrid = ({ widgetConfig, widgetFields }) => {
   const [selectedWidgetKey, setSelectedWidgetKey] = useState(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [selectedWidgetMeta, setSelectedWidgetMeta] = useState(null);
+  const [editingWidgetId, setEditingWidgetId] = useState(null);
   const [tempConfig, setTempConfig] = useState({});
   const [fields, setFields] = useState(widgetFields);
 
@@ -84,20 +85,28 @@ const CardGrid = ({ widgetConfig, widgetFields }) => {
     }
 
   };
+
   const handleSaveWidget = async () => {
-    const newWidget = {
-      id: Date.now().toString(),
+    const payload = {
       key: selectedWidgetMeta.key,
       config: tempConfig
     };
-
     try {
-      const res = await api.post("/user-widgets", newWidget);
+      let res;
+      // if editing existing widget -> PATCH
+      if (editingWidgetId) {
+        res = await api.patch(`/user-widgets/${editingWidgetId}`, payload);
+      }
+      // else create new widget -> POST
+      else {
+        const newWidget = { id: Date.now().toString(), ...payload };
+        res = await api.post("/user-widgets", newWidget);
+      }
       setWidgets(res.data.widgets);
-
       setSettingsModalOpen(false);
+      setEditingWidgetId(null);
     } catch (err) {
-      console.error("Failed to create widget:", err.response?.data || err.message);
+      console.error("Failed to save widget:", err.response?.data || err.message);
     }
   };
 
@@ -172,6 +181,13 @@ const CardGrid = ({ widgetConfig, widgetFields }) => {
                   WidgetComponent={WidgetComponent}
                   isDraggable={isDraggable}
                   onDelete={handleDeleteModal}
+                  onSettings={(widget) => {
+                    setEditingWidgetId(widget.id);
+                    const meta = widgetConfig.find(w => w.key === widget.key);
+                    setSelectedWidgetMeta(meta);
+                    setTempConfig(widget.config);
+                    setSettingsModalOpen(true);
+                  }}
                 />
               );
             })}
@@ -209,7 +225,6 @@ const CardGrid = ({ widgetConfig, widgetFields }) => {
             </button>
             <button
               onClick={() => {
-                console.log("Widget deleted!");
                 handleWidgetDelete(deletedId)
                 setIsOpen(false);
               }}
@@ -270,7 +285,9 @@ const CardGrid = ({ widgetConfig, widgetFields }) => {
             widgetMeta={selectedWidgetMeta}
             widgetFields={fields}
             configValues={tempConfig}
-            onChangeConfig={(k, v) => setTempConfig(prev => ({ ...prev, [k]: v }))}
+            onChangeConfig={(fieldKey, fieldValue) =>
+              setTempConfig(prev => ({ ...prev, [fieldKey]: fieldValue }))
+            }
           />
         }
         footer={
