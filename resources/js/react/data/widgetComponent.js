@@ -7,22 +7,22 @@ import OccupancyOverTime from "../components/widgets/OccupancyOverTime";
 export const widgetComponents = {
   "avg-dwell-time": {
     component: AvgDwellTime,
-    layout: { width: "normal", height: "half" },
+    layout: { width: "half", height: "single" },
   },
   "total-people": {
     component: TotalPeople,
-    layout: { width: "normal", height: "half" },
+    layout: { width: "half", height: "single" },
   },
   "highest-zone-movements": {
     component: HighestZoneMovements,
-    layout: { width: "normal", height: "normal" },
+    layout: { width: "half", height: "double" },
   },
   "dwell-time-analytics": {
     component: DwellTimeAnalytics,
-    layout: { width: "normal", height: "normal" },
+    layout: { width: "half", height: "double" },
   },
   "occupancy-over-time": {
     component: OccupancyOverTime,
-    layout: { width: "double", height: "normal" },
+    layout: { width: "full", height: "double" },
   },
 };

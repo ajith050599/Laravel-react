@@ -1,4 +1,3 @@
-import React from "react";
 
 const HighestZoneMovements = ({ config }) => (
     <div className="text-center">

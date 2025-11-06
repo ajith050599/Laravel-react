@@ -14,17 +14,52 @@ import { widgetComponents } from "../data/widgetComponent";
 import { useFetch } from "../hooks/useFetch";
 import api from "../api/axios";
 import StaticWidgetCard from "../components/StaticWidgetCard";
+import Modal from "../components/Modal";
+import WidgetLibraryBody from "../components/WidgetLibraryBody";
+import WidgetSettingsBody from "../components/WidgetSettingsBody";
+import ToggleModeSwitch from "../components/ToggleSwitch";
 
-const CardGrid = () => {
-  const { data, isLoading, hasError } = useFetch("/user-widgets", {}, 30);
+const CardGrid = ({ widgetConfig, widgetFields }) => {
   const hasMounted = useRef(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [deletedId, setDeletedId] = useState(false);
+  const [selectedWidgetKey, setSelectedWidgetKey] = useState(null);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [selectedWidgetMeta, setSelectedWidgetMeta] = useState(null);
+  const [tempConfig, setTempConfig] = useState({});
+  const [fields, setFields] = useState(widgetFields);
+
   const [isDraggable, setIsDraggable] = useState(false);
   const [widgets, setWidgets] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const { data } = useFetch("/user-widgets", {}, 0, !isDraggable, true);
 
   useEffect(() => {
     setWidgets(data)
   }, [data])
+
+  useEffect(() => {
+    const loadDynamicFields = async () => {
+      const apiFields = Object.entries(widgetFields).filter(([key, f]) => f.source === "api");
+
+      const requests = apiFields.map(([key, f]) =>
+        api.get(f.endpoint).then(res => ({ key, options: res.data }))
+      );
+
+      const results = await Promise.all(requests);
+
+      setFields(prev => {
+        const updated = { ...prev };
+        results.forEach(({ key, options }) => {
+          updated[key] = { ...updated[key], options };
+        });
+        return updated;
+      });
+    };
+
+    loadDynamicFields();
+  }, []);
 
   useEffect(() => {
     if (!hasMounted.current) {
@@ -35,12 +70,44 @@ const CardGrid = () => {
       widgetReorder();
     }
   }, [isDraggable]);
+  const handleDeleteModal = (deletedId) => {
+    setIsOpen(true)
+    setDeletedId(deletedId)
+  }
+
+  const handleWidgetDelete = async (deletedId) => {
+    try {
+      const res = await api.delete(`/user-widgets/${deletedId}`);
+      setWidgets((prev) => prev.filter((w) => w.id !== deletedId));
+    } catch (err) {
+      console.error(" Failed to delete widget:", err.response?.data || err.message);
+    }
+
+  };
+  const handleSaveWidget = async () => {
+    const newWidget = {
+      id: Date.now().toString(),
+      key: selectedWidgetMeta.key,
+      config: tempConfig
+    };
+
+    try {
+      const res = await api.post("/user-widgets", newWidget);
+      setWidgets(res.data.widgets);
+
+      setSettingsModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create widget:", err.response?.data || err.message);
+    }
+  };
+
+
   const widgetReorder = async () => {
     try {
       const res = await api.post("/user-widgets/reorder", { widgets });
-      setResult(res.data);
+      setWidgets(res.data.widgets);
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong");
+      setError(err.response || "Something went wrong");
     }
   }
 
@@ -75,25 +142,14 @@ const CardGrid = () => {
           </span>
         </div>
 
-        <div className="flex justify-between items-center w-[25%]">
-          <button className="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition-colors">
+        <div className="flex justify-between items-center w-[30%]">
+          <button
+            className="px-4 py-2 border border-blue-600 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition-colors"
+            onClick={() => setAddWidgetOpen(true)}
+          >
             Add Widget
           </button>
-          <label className="relative inline-block w-41 h-10 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isDraggable}
-              onChange={() => setIsDraggable((prev) => !prev)}
-              className="sr-only"
-            />
-            <div className="w-full h-full bg-blue-600 rounded-md" />
-            <div
-              className={`absolute top-0.5 left-0.5 w-[100px] h-9 bg-white rounded-md shadow-md flex items-center justify-center text-sm font-semibold text-blue-600 transform transition-transform duration-300 ${isDraggable ? "translate-x-[60px]" : "translate-x-0"
-                }`}
-            >
-              {isDraggable ? "Customize" : "Live"}
-            </div>
-          </label>
+          <ToggleModeSwitch value={isDraggable} onChange={setIsDraggable} />
         </div>
       </div>
 
@@ -114,13 +170,15 @@ const CardGrid = () => {
                   activeId={activeId}
                   layout={layout}
                   WidgetComponent={WidgetComponent}
+                  isDraggable={isDraggable}
+                  onDelete={handleDeleteModal}
                 />
               );
             })}
           </div>
 
           <DragOverlay>
-            <CardOverlay widget={activeWidget} layout={activeLayout} />
+            <CardOverlay widget={activeWidget} isDraggable={isDraggable} layout={activeLayout} />
           </DragOverlay>
         </DndContext>
       ) : (
@@ -129,12 +187,104 @@ const CardGrid = () => {
             const { component: WidgetComponent, layout } = widgetComponents[widget?.key];
             return (
               <StaticWidgetCard key={widget?.id} layout={layout}>
-                <WidgetComponent config={widget?.config} layout={layout} />
+                <WidgetComponent config={widget?.config} layout={layout} isDraggable={isDraggable} />
               </StaticWidgetCard>
             );
           })}
         </div>
       )}
+
+      <Modal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        header="Delete Widget"
+        body="Are you sure you want to delete this widget? This action cannot be undone."
+        footer={
+          <>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="px-4 py-2 bg-gray-200 rounded-md"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                console.log("Widget deleted!");
+                handleWidgetDelete(deletedId)
+                setIsOpen(false);
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-md"
+            >
+              Delete
+            </button>
+          </>
+        }
+      />
+      <Modal
+        isOpen={addWidgetOpen}
+        onClose={() => setAddWidgetOpen(false)}
+        width="max-w-[70%]"
+        header={
+          <div className="flex flex-col gap-1">
+            <span className="text-[#414651] font-inter text-xl font-bold leading-[30px]">
+              Add Widget
+            </span>
+
+            <span className="text-[#414651] font-inter text-base font-normal leading-6">
+              Select widgets to visualize and interact with your data
+            </span>
+          </div>
+        }
+        body={
+          <WidgetLibraryBody
+            widgetConfig={widgetConfig}
+            selectedKey={selectedWidgetKey}
+            onSelect={(key) => {
+              setSelectedWidgetKey(key);
+              const meta = widgetConfig.find(w => w.key === key);
+              setSelectedWidgetMeta(meta);
+              setTempConfig(meta.settings);
+              setAddWidgetOpen(false);
+              setSettingsModalOpen(true);
+            }}
+          />
+
+        }
+      />
+      <Modal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        width="max-w-[40%]"
+        header={
+          <div className="flex items-start gap-3">
+            <div>
+              <h2 className="font-semibold text-xl">{selectedWidgetMeta?.title}</h2>
+              <p className="text-gray-500 text-sm">
+                Customize how your widget appears and behaves on the dashboard
+              </p>
+            </div>
+          </div>
+        }
+        body={
+          <WidgetSettingsBody
+            widgetMeta={selectedWidgetMeta}
+            widgetFields={fields}
+            configValues={tempConfig}
+            onChangeConfig={(k, v) => setTempConfig(prev => ({ ...prev, [k]: v }))}
+          />
+        }
+        footer={
+          <>
+            <button onClick={() => setSettingsModalOpen(false)} className="px-4 py-2 rounded-md border border-[#D5D7DA]">
+              Cancel
+            </button>
+            <button onClick={handleSaveWidget} className="px-4 py-2 bg-[#155EEF] text-white rounded-md">
+              Save Widget
+            </button>
+          </>
+        }
+      />
+
     </div>
   );
 };

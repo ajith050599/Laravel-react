@@ -10,7 +10,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        console.log("➡️ Request:", config.method?.toUpperCase(), config.url);
+        // console.log("➡️ Request:", config.method?.toUpperCase(), config.url);
         // You can add auth tokens here, e.g.:
         // config.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
         return config;
@@ -24,7 +24,7 @@ api.interceptors.request.use(
 // ✅ Response Interceptor
 api.interceptors.response.use(
     (response) => {
-        console.log("Response:", response);
+        // console.log("Response:", response);
         return response;
     },
     (error) => {

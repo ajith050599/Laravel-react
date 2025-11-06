@@ -4,9 +4,9 @@ const StaticWidgetCard = ({ layout, children }) => {
     const { width, height } = layout || {};
 
     const layoutClass = `
-    ${width === "double" ? "col-span-2 aspect-[2/1]" : ""}
-    ${height === "half" ? "aspect-[1/0.5]" : ""}
-    ${width === "normal" && height === "normal" ? "aspect-square" : ""}
+    ${width === "full" ? "col-span-2 aspect-[2/1]" : ""}
+    ${height === "single" ? "aspect-[1/0.5]" : ""}
+    ${width === "half" && height === "double" ? "aspect-square" : ""}
   `;
 
     return (

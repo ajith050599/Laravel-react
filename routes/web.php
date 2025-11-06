@@ -23,8 +23,12 @@ Route::get('/register', function () {
 
 
 Route::get('/overview', function () {
-    return view('pages.overview');
+    $widgetConfig = config('widgets');
+    $widgetFields = config('widget_fields');
+
+    return view('pages.overview', compact('widgetConfig', 'widgetFields'));
 });
+
 
 Route::get('/tasks/{any?}', function () {
     return view('pages.task');
@@ -38,69 +42,22 @@ Route::get('/api/user-widgets', function () {
         [
             'id' => "1",
             'key' => "avg-dwell-time",
-            'config' => ['location' => "location_1", 'timeframe' => "15 days", 'peopletype' => "visitor"],
+            'config' => [
+                'location' => "location_1",
+                'time_frame' => "7_days",
+                'people_type' => "visitor"
+            ],
         ],
         [
             'id' => "2",
-            'key' => "avg-dwell-time",
-            'config' => ['location' => "location_2", 'timeframe' => "3 days", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "3",
             'key' => "total-people",
-            'config' => ['location' => "location_3", 'timeframe' => "1 day", 'peopletype' => "visitor"],
+            'config' => [
+                'location' => "location_2",
+                'time_frame' => "today",
+                'people_type' => "employee"
+            ],
         ],
-        [
-            'id' => "4",
-            'key' => "total-people",
-            'config' => ['location' => "location_4", 'timeframe' => "7 days", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "5",
-            'key' => "occupancy-over-time",
-            'config' => ['location' => "location_5", 'timeframe' => "10 days", 'peopletype' => "visitor"],
-        ],
-        [
-            'id' => "6",
-            'key' => "occupancy-over-time",
-            'config' => ['location' => "location_6", 'timeframe' => "1 week", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "7",
-            'key' => "highest-zone-movements",
-            'config' => ['location' => "location_7", 'timeframe' => "15 days", 'peopletype' => "visitor"],
-        ],
-        [
-            'id' => "8",
-            'key' => "highest-zone-movements",
-            'config' => ['location' => "location_8", 'timeframe' => "3 days", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "9",
-            'key' => "highest-zone-movements",
-            'config' => ['location' => "location_9", 'timeframe' => "1 day", 'peopletype' => "visitor"],
-        ],
-        [
-            'id' => "10",
-            'key' => "highest-zone-movements",
-            'config' => ['location' => "location_10", 'timeframe' => "2 weeks", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "11",
-            'key' => "dwell-time-analytics",
-            'config' => ['location' => "location_11", 'timeframe' => "5 days", 'peopletype' => "visitor"],
-        ],
-        [
-            'id' => "12",
-            'key' => "dwell-time-analytics",
-            'config' => ['location' => "location_12", 'timeframe' => "30 days", 'peopletype' => "employee"],
-        ],
-        [
-            'id' => "13",
-            'key' => "dwell-time-analytics",
-            'config' => ['location' => "location_13", 'timeframe' => "10 days", 'peopletype' => "visitor"],
-        ],
-    ];
+    ];  
 
     if (Storage::disk('local')->exists($filePath)) {
         $data = json_decode(Storage::disk('local')->get($filePath));
@@ -112,6 +69,7 @@ Route::get('/api/user-widgets', function () {
     return response()->json($data);
 });
 
+
 Route::post('/api/user-widgets/reorder', function (Request $request) {
     $validated = $request->validate([
         'widgets' => 'required|array',
@@ -119,8 +77,8 @@ Route::post('/api/user-widgets/reorder', function (Request $request) {
         'widgets.*.key' => 'required|string',
         'widgets.*.config' => 'required|array',
         'widgets.*.config.location' => 'required|string',
-        'widgets.*.config.timeframe' => 'required|string',
-        'widgets.*.config.peopletype' => 'required|string',
+        'widgets.*.config.time_frame' => 'required|string',
+        'widgets.*.config.people_type' => 'required|string',
     ]);
 
     $widgetsToStore = $validated['widgets'];
@@ -131,5 +89,115 @@ Route::post('/api/user-widgets/reorder', function (Request $request) {
     return response()->json([
         'message' => 'User widgets reorder saved successfully.',
         'count' => count($widgetsToStore),
+        'widgets' => $widgetsToStore
+    ]);
+});
+
+Route::delete('/api/user-widgets/{id}', function ($id) {
+    $filePath = 'user_widgets_data.json';
+
+    if (!Storage::disk('local')->exists($filePath)) {
+        return response()->json(['error' => 'Widget data not found'], 404);
+    }
+
+    $data = json_decode(Storage::disk('local')->get($filePath), true);
+
+    $updatedData = array_filter($data, function ($widget) use ($id) {
+        return $widget['id'] !== $id;
+    });
+
+    if (count($data) === count($updatedData)) {
+        return response()->json(['error' => 'Widget not found'], 404);
+    }
+
+    Storage::disk('local')->put($filePath, json_encode(array_values($updatedData), JSON_PRETTY_PRINT));
+
+    return response()->json([
+        'message' => 'Widget deleted successfully.',
+        'remaining' => count($updatedData),
+    ]);
+});
+
+Route::post('/api/user-widgets', function (Request $request) {
+    $validated = $request->validate([
+        'id' => 'required|string',
+        'key' => 'required|string',
+        'config' => 'required|array',
+    ]);
+
+    $filePath = 'user_widgets_data.json';
+
+    if (Storage::disk('local')->exists($filePath)) {
+        $data = json_decode(Storage::disk('local')->get($filePath), true);
+    } else {
+        $data = [];
+    }
+
+    // append new widget into array
+    $data[] = $validated;
+
+    Storage::disk('local')->put($filePath, json_encode($data, JSON_PRETTY_PRINT));
+
+    return response()->json([
+        'message' => 'Widget created successfully.',
+        'widget'  => $validated,
+        'count'   => count($data),
+        'widgets' => $data
+    ]);
+});
+Route::get('/api/user/locations', function () {
+    return response()->json([
+        ['label' => 'HQ Main Building', 'value' => 'hq'],
+        ['label' => 'Warehouse East', 'value' => 'warehouse_east'],
+        ['label' => 'Remote Office Dubai', 'value' => 'dubai_office'],
+    ]);
+});
+
+Route::get('/api/zones', function () {
+    return response()->json([
+        ['label' => 'Lobby', 'value' => 'lobby'],
+        ['label' => 'Parking', 'value' => 'parking'],
+        ['label' => 'Cafeteria', 'value' => 'cafeteria'],
+        ['label' => 'Server Room', 'value' => 'server_room'],
+    ]);
+});
+
+Route::get('/api/zone-pairs', function () {
+    return response()->json([
+        ['label' => 'Lobby <-> Parking', 'value' => 'lobby_parking'],
+        ['label' => 'Lobby <-> Cafeteria', 'value' => 'lobby_cafeteria'],
+        ['label' => 'Cafeteria <-> Server Room', 'value' => 'cafeteria_server'],
+    ]);
+});
+
+// Route::get('/api/people-count', function (Request $request) {
+//     $timeframe = $request->query('timeframe', 'today');
+
+//     return response()->json([
+//         'timeframe' => $timeframe,
+//         'total_people' => rand(100, 1000),
+//         'timestamp' => now()->toDateTimeString(),
+//     ]);
+// });
+
+// Route::get('/api/average-zone-dwell-time', function (Request $request) {
+//     $location = $request->query('location', 'Decathlon Deira');
+
+//     return response()->json([
+//         'location' => $location,
+//         'dwell_time' => rand(10, 40),
+//         'timestamp' => now()->toDateTimeString(),
+//     ]);
+// });
+
+Route::get('/api/people-count', function (Request $request) {
+    return response()->json([
+        'value' => rand(100, 1000),
+    ]);
+});
+
+Route::get('/api/average-zone-dwell-time', function (Request $request) {
+    return response()->json([
+        'value' => rand(10, 40),
     ]);
 });

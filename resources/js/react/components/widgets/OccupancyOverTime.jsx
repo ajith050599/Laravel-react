@@ -1,5 +1,4 @@
-import React from "react";
-import WidgetWrapper from "../WidgetWrapper";
+
 
 const OccupancyOverTime = ({ config }) => (
         <div className="text-center">
